@@ -4,8 +4,11 @@ Java implementation of the 2-4 Tree algorithm as a database storing integer valu
 
 Completed:
   Insertion
-
-WIP:
-  Menu
   Deletion
   Find
+  Menu
+
+WIP:
+  Rebalance refactor
+  Stress test
+  Runtime analysis
