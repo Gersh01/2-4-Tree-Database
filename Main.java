@@ -11,18 +11,19 @@
 * 03/25/2024    Alex            Finished getNode method
 * 03/27/2024    Alex            Finished getLeafNode methods, and set up structure for deletion
 * 03/29/2024    Alex            Finished delete by transfer, started getting fusion done
+* 03/30/2024    Alex            Finished fusion delete, internal node delete, and menu functionality
 *
 /******************************************************************/
 //TO-DO:
 /*
  * Requirements for putting into production
- *      Delete functionality
- *          - Deleting a value from an internal node
- *          - Deleting a leaf node using fusion
- *      Add a menu
- *          - Insert
- *          - Delete
- *          - Find
+ *      Reconfigure Rebalance
+ *          - Investigate why one side has more depth than the other
+ *      Run a baseline and check for edge cases
+ *          - Worst case for adding
+ *          - Worst case for deleting
+ *          - Worst case for adding then deleting
+ *          - Worst case of all functionality
  * 
  * Personal Tweaks
  *      Compatability with different data types
@@ -37,27 +38,103 @@
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 public class Main extends Canvas {
     public static Tree twoFourTree = new Tree();
     
-    public static void main(String[] args) {
-        //Testing purposes  
-        twoFourTree.insert(twoFourTree, 10);
-        twoFourTree.insert(twoFourTree, 20);
-        twoFourTree.insert(twoFourTree, 30);
-        twoFourTree.insert(twoFourTree, 5);
-        twoFourTree.insert(twoFourTree, 50);
-        twoFourTree.insert(twoFourTree, 60);
-        twoFourTree.insert(twoFourTree, 70);
-        twoFourTree.insert(twoFourTree, 1);
-        twoFourTree.insert(twoFourTree, 2);
-        twoFourTree.insert(twoFourTree, 15);
-        twoFourTree.insert(twoFourTree, 80);
-        twoFourTree.insert(twoFourTree, 90);
-        twoFourTree.insert(twoFourTree, 100);
+    public static void printMenu() {
+        System.out.println("----------------------------------------------");
+        System.out.println("1 - Add entry");
+        System.out.println("2 - Delete entry");
+        System.out.println("3 - Check for entry");
+        System.out.println("4 - Print tree");
+        System.out.println("5 - Exit");
+        System.out.println("\nEnter your selection: ");
+    }
+    public static int handleValueInput(Scanner in) {
+        int val;
+        while(true) {
+            try {
+                val = Integer.parseInt(in.next());
+            } catch(Exception e) {
+                System.out.println("Please enter a valid integer value");
+                continue;
+            }
 
-        twoFourTree.print(twoFourTree);
+            if(val < 1) continue;
+            in.nextLine();
+            break;
+        }
+
+        return val;
+    }
+    public static void menu() {
+        Scanner input = new Scanner(System.in);
+
+        int selection;
+        boolean sentinel = true;
+
+        while(sentinel) {
+            printMenu();
+
+            try {
+                selection = Integer.parseInt(input.next());
+            } catch(Exception e) {
+                System.out.println("Enter a valid Integer");
+                continue;
+            }
+
+            switch(selection) {
+                case 1:
+                    System.out.println("----------------------------------------------");
+                    System.out.print("Enter the value you would to add: ");
+                    
+                    selection = handleValueInput(input);
+                    twoFourTree.insert(twoFourTree, selection); 
+
+                    System.out.println("Success!");
+
+                    break;
+                case 2:
+                    System.out.println("----------------------------------------------");
+                    System.out.print("Enter the value you would to delete: ");
+
+                    selection = handleValueInput(input);
+                    twoFourTree.delete(twoFourTree, selection);
+
+                    System.out.println("Success!");
+
+                    break;
+                case 3:
+                    System.out.println("----------------------------------------------");
+                    System.out.print("Enter the value you would like to find: ");
+
+                    selection = handleValueInput(input);
+                    if(twoFourTree.getNode(selection) != null)
+                        System.out.println("Found!");
+                    else
+                        System.out.println("Not found!");
+
+                    break;
+                case 4:
+                    System.out.println("----------------------------------------------");
+                    twoFourTree.print(twoFourTree);
+
+                    break;
+                case 5:
+                    System.out.println("Goodbye!");
+                    sentinel = false;
+                    break;
+                default:
+                    System.out.println("Enter a value between 1-5");
+                    continue;
+            }
+            
+        }
+    }
+    public static void main(String[] args) {
+        menu();
     }
 }
 class Tree {
@@ -69,7 +146,7 @@ class Tree {
     public int getIndex(ArrayList<Integer> list, int value) {
         int idx = 0;
         for(Integer i: list) {
-            if(i > value) break;
+            if(i >= value) break;
             idx++;
         }
         return idx;
@@ -111,12 +188,15 @@ class Tree {
         Tree parentTree = new Tree();
         parentTree.nodeValues = nodeValues;
         parentTree.children = children;
-
-        Tree childTree = null;
+        
         int position;
+        Tree childTree = null;
+
+        if(nodeValues.contains(value)) return null;
         
         while(!parentTree.children.isEmpty()) {
             position = getIndex(parentTree.nodeValues, value);
+
             childTree = parentTree.children.get(position);
 
             if(childTree.nodeValues.contains(value)) return parentTree;
@@ -215,33 +295,40 @@ class Tree {
         Tree leftSibling = null;
         Tree rightSibling = null;
 
+        int position;
+        int parentValue;
+
         //if fusion reaches the root
         if(parentNode == null) {
+            //make the root the last fused node and update the depth as it has now shrunk
+            Tree newRoot = delNode.children.get(0);
+
+            nodeValues = newRoot.nodeValues;
+            children = newRoot.children;
+            depth--;
+
             return;
         }
 
-        int position = getIndex(parentNode.nodeValues, value);
-        int parentValue = parentNode.nodeValues.get(position);
+        //get the parent value and replace deleted value
+        position = getIndex(parentNode.nodeValues, value);
 
+        if(position == parentNode.nodeValues.size())
+            parentValue = parentNode.nodeValues.get(position - 1);
+        else  
+            parentValue = parentNode.nodeValues.get(position);
+        
+        delNode.nodeValues.set(0, parentValue);
+
+        //get the siblings of the deleted node
         if((position - 1) >= 0)
             leftSibling = parentNode.children.get(position - 1);
 
         if((position + 1) < parentNode.children.size())
             rightSibling = parentNode.children.get(position + 1);
-
-        parentNode.nodeValues.remove(position);
-        delNode.nodeValues.set(0, parentValue);
         
-        if(leftSibling != null) {
-            for(int i = 0; i < leftSibling.nodeValues.size(); i++)
-                delNode.nodeValues.add(i, leftSibling.nodeValues.get(i));
-
-            for(int i = 0; i < leftSibling.children.size(); i++)
-                delNode.children.add(i, leftSibling.children.get(i));
-
-            parentNode.children.remove(position);
-        }
-        else {
+        //Fuse the nodes depending on left or right
+        if(rightSibling != null) {
             for(int i = 0; i < rightSibling.nodeValues.size(); i++)
                 delNode.nodeValues.add(rightSibling.nodeValues.get(i));
 
@@ -250,11 +337,26 @@ class Tree {
 
             parentNode.children.remove(position + 1);
         }
+        else {
+            for(int i = 0; i < leftSibling.nodeValues.size(); i++)
+                delNode.nodeValues.add(i, leftSibling.nodeValues.get(i));
+
+            for(int i = 0; i < leftSibling.children.size(); i++)
+                delNode.children.add(i, leftSibling.children.get(i));
+
+            parentNode.children.remove(position - 1);
+        }
 
         //when the parent also only has one value, do another fusion
         if(parentNode.nodeValues.size() == 1) {
             fusion(parentNode, parentValue);
         }
+        else {
+            position = (position == parentNode.nodeValues.size()) ? (position - 1):position;
+            parentNode.nodeValues.remove(position);
+        }
+
+        
     }
     public boolean transfer(Tree delNode, Tree parentNode, Tree leftSibling, Tree rightSibling, int value) {
         int siblingValue;
@@ -317,7 +419,7 @@ class Tree {
 
         //tree with depth of 0
         if(parent == null && delNode.children.isEmpty()) {
-            delNode.nodeValues.remove(value);
+            delNode.nodeValues.remove(Integer.valueOf(value));
             return;
         }
 
@@ -334,7 +436,35 @@ class Tree {
 
         //handle for internal node deletion
         if(!delNode.children.isEmpty()) {
+            int newValue;
+
+            position = getIndex(delNode.nodeValues, value);
+            position = (position == delNode.nodeValues.size()) ? (position - 1):position;
+
+            //check if left can be removed
             leafNode = getLeftLeafNode(delNode.children.get(position), value);
+            if(leafNode.nodeValues.size() > 1) {
+                newValue = leafNode.nodeValues.get(leafNode.nodeValues.size() - 1);
+                delNode.nodeValues.set(position, newValue);
+                leafNode.nodeValues.remove(Integer.valueOf(newValue));
+
+                return;
+            }
+            
+            //check if right can be removed
+            leafNode = getRightLeafNode(delNode.children.get(position+1), value);
+            if(leafNode.nodeValues.size() > 1) {
+                newValue = leafNode.nodeValues.get(0);
+                delNode.nodeValues.set(position, newValue);
+                leafNode.nodeValues.remove(0);
+
+                return;
+            }
+
+            newValue = leafNode.nodeValues.get(0);
+            delNode.nodeValues.set(position, newValue);
+            delete(leafNode, newValue);
+
         }
 
         //handle for leaf node
@@ -347,7 +477,7 @@ class Tree {
             
             //check for transfer first, if transfer does not work do fusion, fusion has a chance to break the 2-4 property
             if(!transfer(delNode, parent, leftSibling, rightSibling, value)) {
-                fusion(node, value);    
+                fusion(delNode, value);    
 
                 Tree tmpTree = new Tree();
                 tmpTree.nodeValues = nodeValues;
@@ -366,7 +496,7 @@ class Tree {
     public void printTree(Tree node, int myDepth) {
         if(node == null) return;
 
-        for(int i = 0; i < myDepth; i++) System.out.print("\t");
+        for(int i = 0; i < myDepth; i++) System.out.print("  ");
 
         System.out.print("| ");
 
