@@ -12,36 +12,30 @@
 * 03/27/2024    Alex            Finished getLeafNode methods, and set up structure for deletion
 * 03/29/2024    Alex            Finished delete by transfer, started getting fusion done
 * 03/30/2024    Alex            Finished fusion delete, internal node delete, and menu functionality
+* 04/03/2024    Alex            No duplicates; Calculated worst case runtime for insertions
+* 04/04/2024    Alex            Finished deletion operation, calculated worst case runtime for insert and delete
 *
 /******************************************************************/
-//TO-DO:
-/*
- * Requirements for putting into production
- *      Reconfigure Rebalance
- *          - Investigate why one side has more depth than the other
- *      Run a baseline and check for edge cases
- *          - Worst case for adding
- *          - Worst case for deleting
- *          - Worst case for adding then deleting
- *          - Worst case of all functionality
- * 
- * Personal Tweaks
- *      Compatability with different data types
- *          - Double
- *          - Float
- *          - Long Int
- *          - Strings
- *          - Characters
- *          - Objects
- *      Once compatible make the class generic and add an implementation
- */
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 
-public class Main extends Canvas {
-    public static Tree twoFourTree = new Tree();
+public class BTree {
+
+    //TRUE: Menu driven experience, program takes slightly longer (default)
+    //FALSE: Enter commands into a textfile and run with textfile
+    /*  Commands for each operation:
+     *      1 - Insert
+     *      2 - Delete
+     *      3 - Find
+     *      4 - Print
+     *      5 - Exit
+     *  Followed by a value to operate on, "1 29" (insert 29)
+     */
+    final private static boolean MENU = true;
+
+    private static Tree twoFourTree = new Tree();
     
     public static void printMenu() {
         System.out.println("----------------------------------------------");
@@ -76,7 +70,8 @@ public class Main extends Canvas {
         boolean sentinel = true;
 
         while(sentinel) {
-            printMenu();
+            if(MENU)
+                printMenu();
 
             try {
                 selection = Integer.parseInt(input.next());
@@ -87,31 +82,41 @@ public class Main extends Canvas {
 
             switch(selection) {
                 case 1:
-                    System.out.println("----------------------------------------------");
-                    System.out.print("Enter the value you would to add: ");
+                    if(MENU) {
+                        System.out.println("----------------------------------------------");
+                        System.out.print("Enter the value you would to add: ");
+                    }
                     
                     selection = handleValueInput(input);
                     twoFourTree.insert(twoFourTree, selection); 
 
-                    System.out.println("Success!");
+                    if(MENU)
+                        System.out.println("Success!");
 
                     break;
                 case 2:
-                    System.out.println("----------------------------------------------");
-                    System.out.print("Enter the value you would to delete: ");
+                    if(MENU) {
+                        System.out.println("----------------------------------------------");
+                        System.out.print("Enter the value you would to delete: ");
+                    }
+                    
 
                     selection = handleValueInput(input);
                     twoFourTree.delete(twoFourTree, selection);
 
-                    System.out.println("Success!");
+                    if(MENU)
+                        System.out.println("Success!");
 
                     break;
                 case 3:
-                    System.out.println("----------------------------------------------");
-                    System.out.print("Enter the value you would like to find: ");
+                    if(MENU) {
+                        System.out.println("----------------------------------------------");
+                        System.out.print("Enter the value you would like to find: ");
+                    }
 
                     selection = handleValueInput(input);
-                    if(twoFourTree.getNode(selection) != null)
+
+                    if(twoFourTree.getNode(twoFourTree, selection) != null)
                         System.out.println("Found!");
                     else
                         System.out.println("Not found!");
@@ -134,13 +139,19 @@ public class Main extends Canvas {
         }
     }
     public static void main(String[] args) {
+        long stime = System.currentTimeMillis();
+
         menu();
+
+        long etime = System.currentTimeMillis();
+
+        System.out.println("Total execution time: " + (etime - stime) + "ms");
     }
 }
 class Tree {
-    public ArrayList<Integer> nodeValues = new ArrayList<Integer>();
-    public ArrayList<Tree> children = new ArrayList<Tree>();
-    public static int depth = 0;
+    private ArrayList<Integer> nodeValues = new ArrayList<Integer>();
+    private ArrayList<Tree> children = new ArrayList<Tree>();
+    private static int depth = 0;
 
     //getter helper methods
     public int getIndex(ArrayList<Integer> list, int value) {
@@ -151,29 +162,23 @@ class Tree {
         }
         return idx;
     }
-    public Tree getNode(int value) {
-        Tree curNode = new Tree();
+    public Tree getNode(Tree node, int value) {
         int position;
+        
+        if(node.nodeValues.contains(value))
+            return node;
 
-        curNode.nodeValues = nodeValues;
-        curNode.children = children;
+        if(node.children.isEmpty()) return null;
 
-        if(nodeValues.contains(value)) return curNode;
-
-        while(!curNode.children.isEmpty()) {
-            position = getIndex(curNode.nodeValues,value);
-            curNode = curNode.children.get(position);
-            if(curNode.nodeValues.contains(value)) return curNode;
-        }
-
-        return null;
+        position = getIndex(node.nodeValues,value);
+        return getNode(node.children.get(position), value);
     }
     public Tree getLeftLeafNode(Tree node, int value) {
         if(node.children.isEmpty()) {
             return node;
         }
 
-        int rightPosition = node.children.size();
+        int rightPosition = node.nodeValues.size();
 
         return getLeftLeafNode(node.children.get(rightPosition), value);
     }
@@ -182,7 +187,7 @@ class Tree {
             return node;
         }
 
-        return getLeftLeafNode(node.children.get(0), value);
+        return getRightLeafNode(node.children.get(0), value);
     }
     public Tree getParent(int value) {
         Tree parentTree = new Tree();
@@ -192,8 +197,9 @@ class Tree {
         int position;
         Tree childTree = null;
 
-        if(nodeValues.contains(value)) return null;
-        
+        if(nodeValues.contains(value)) 
+            return null;
+
         while(!parentTree.children.isEmpty()) {
             position = getIndex(parentTree.nodeValues, value);
 
@@ -207,7 +213,7 @@ class Tree {
         return null;
     }
    
-    //insert method with helper method
+    //rebalance function, checks every node
     public void rebalanceTree(Tree node) {
         if(node == null)
             return;
@@ -273,6 +279,8 @@ class Tree {
         
         
     }
+
+    //insertion method
     public void insert(Tree node, int value) {
         int position = getIndex(node.nodeValues, value);
         
@@ -406,14 +414,11 @@ class Tree {
         return false;
     }
     public void delete(Tree node, int value) {
-        Tree delNode = getNode(value);
+        Tree delNode = getNode(node, value);
         int position = getIndex(delNode.nodeValues, value);
         Tree parent = getParent(value);
 
-        //internal node deletion helper
         Tree leafNode = null;
-
-        //leaf node deletion size > 1 helpers
         Tree leftSibling = null;
         Tree rightSibling = null;
 
@@ -423,17 +428,6 @@ class Tree {
             return;
         }
 
-        position = getIndex(parent.nodeValues, value);
-
-        //if a left sibling exists - finding the siblings first means less 
-        //calls for the parent which takes a long time
-        if((position - 1) >= 0)
-            leftSibling = parent.children.get(position - 1);
-
-        //if a right sibling exists
-        if((position + 1) < parent.children.size())
-            rightSibling = parent.children.get(position + 1);
-
         //handle for internal node deletion
         if(!delNode.children.isEmpty()) {
             int newValue;
@@ -441,8 +435,9 @@ class Tree {
             position = getIndex(delNode.nodeValues, value);
             position = (position == delNode.nodeValues.size()) ? (position - 1):position;
 
-            //check if left can be removed
+            //check if left can be removed easily > 1 value
             leafNode = getLeftLeafNode(delNode.children.get(position), value);
+
             if(leafNode.nodeValues.size() > 1) {
                 newValue = leafNode.nodeValues.get(leafNode.nodeValues.size() - 1);
                 delNode.nodeValues.set(position, newValue);
@@ -451,8 +446,9 @@ class Tree {
                 return;
             }
             
-            //check if right can be removed
+            //check if right can be removed easily > 1 value
             leafNode = getRightLeafNode(delNode.children.get(position+1), value);
+
             if(leafNode.nodeValues.size() > 1) {
                 newValue = leafNode.nodeValues.get(0);
                 delNode.nodeValues.set(position, newValue);
@@ -461,20 +457,36 @@ class Tree {
                 return;
             }
 
+            //this part is kinda weird, add one to the new leaf value to be deleted in order
+            //for the new value from the leaf node to the internal node does not conflict with this process
             newValue = leafNode.nodeValues.get(0);
             delNode.nodeValues.set(position, newValue);
-            delete(leafNode, newValue);
+            leafNode.nodeValues.set(0, newValue+1);
+
+            delete(leafNode, newValue+1);
+            
 
         }
-
         //handle for leaf node
-        if(parent != null && delNode.children.isEmpty()) {
+        else if(parent != null && delNode.children.isEmpty()) {
+    
             //if leaf node has enough nodes after deletion
             if(delNode.nodeValues.size() > 1) {
                 delNode.nodeValues.remove(Integer.valueOf(value));
                 return;
             }
-            
+
+            position = getIndex(parent.nodeValues, value);
+
+            //if a left sibling exists - finding the siblings first means less 
+            //calls for the parent which takes a long time
+            if((position - 1) >= 0)
+                leftSibling = parent.children.get(position - 1);
+
+            //if a right sibling exists
+            if((position + 1) < parent.children.size())
+                rightSibling = parent.children.get(position + 1);
+
             //check for transfer first, if transfer does not work do fusion, fusion has a chance to break the 2-4 property
             if(!transfer(delNode, parent, leftSibling, rightSibling, value)) {
                 fusion(delNode, value);    
@@ -484,13 +496,17 @@ class Tree {
                 tmpTree.children = children;
 
                 rebalanceTree(tmpTree);
+
+                return;
             }
+            
         }
     }
 
     //print wrapper with recursive print, in-order traversal
     public void print(Tree node) {
         printTree(node, 0);
+
         System.out.println();
     }
     public void printTree(Tree node, int myDepth) {
