@@ -1,14 +1,6 @@
 # 2-4-Tree-Database
 
-Java implementation of the 2-4 Tree algorithm as a database storing integer values
 
-Completed:
-  Insertion
-  Deletion
-  Find
-  Menu
+## Worst Case Runtime (Addition and Deletion)
 
-WIP:
-  Rebalance refactor
-  Stress test
-  Runtime analysis
+![WorstCaseRuntime](https://github.com/Gersh01/2-4-Tree-Database/assets/134902494/3acbccb6-1927-471b-8f5f-f95d8c486882)
